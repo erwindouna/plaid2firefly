@@ -5,6 +5,7 @@ import os
 from typing import Any, Self
 
 import httpx
+from config import Config
 
 from exceptions import Plaid2FireflyConnectionError, Plaid2FireflyError, Plaid2FireflyTimeoutError
 
@@ -20,6 +21,8 @@ class PlaidClient:
         self.plaid_env: str = plaid_env
         self.public_token: str | None = None
         
+        
+        self._config = Config()       
         self._request_timeout = request_timeout
         self._client: httpx.AsyncClient | None = None
 
@@ -78,15 +81,22 @@ class PlaidClient:
         """Get the public token from the Plaid client"""
         _LOGGER.info("Creating public token")
 
+        # Ensure country_codes is a list of strings
+        country_codes = self._config.get("country_codes", [])
+        if not isinstance(country_codes, list) or not all(isinstance(code, str) for code in country_codes):
+            raise Plaid2FireflyConnectionError("country_codes must be an array of strings")
+
         msg = {
             "client_id": self.plaid_client_id,
             "secret": self.plaid_secret,
             "client_name": "Plaid2Firefly",
-            "country_codes": os.getenv("COUNTRY_CODES"),
+            "country_codes": country_codes,
             "language": "en",
             "user": {"client_user_id": "Plaid2Firefly"},
             "products": ["auth", "transactions", "liabilities"],
         }
+
+        _LOGGER.debug("Creating public token with message: %s", msg)
 
         public_token = await self._request(uri="/link/token/create", method="POST", json=msg)
 

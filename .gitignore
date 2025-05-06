@@ -131,3 +131,5 @@ setup.py
 
  # Examples
 examples/example_dev.py
+
+config.json
